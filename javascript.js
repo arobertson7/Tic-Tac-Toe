@@ -376,7 +376,12 @@ const displayController = (function() {
         playerInfoForm.classList.add("player-info-form");
         const message = document.createElement("h2");
         message.style.fontWeight = "550";
-        message.textContent = `Player ${playerNumber}, enter your name: `;
+        if (gameController.getGameMode() == "multiplayer") {
+            message.textContent = `Player ${playerNumber}, enter your name: `;
+        }
+        else {
+            message.textContent = `Enter your name: `;
+        }
         const input = document.createElement("input");
         input.id = "playerNameInputField";
         input["maxLength"] = "8";
