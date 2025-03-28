@@ -121,6 +121,7 @@ const gameBoard = (function() {
 function createPlayer(name_) {
     const name = name_.charAt(0).toUpperCase() + name_.slice(1);
     let marker = "";
+    let isComputer = false;
 
     const getName = function() {
         return name;
@@ -134,7 +135,15 @@ function createPlayer(name_) {
         return marker;
     }
 
-    return {getName, setMarker, getMarker};
+    function setIsComputer(trueOrFalse) {
+        isComputer = trueOrFalse;
+    }
+
+    function getIsComputer() {
+        return isComputer;
+    }
+
+    return {getName, setMarker, getMarker, setIsComputer, getIsComputer};
 }
 
 
@@ -142,6 +151,8 @@ const gameController = (function() {
     let playerOne;
     let playerTwo;
     let turnNumber;
+    // variable to keep track of game mode (solo or multiplayer)
+    let gameMode;
 
     function initializePlayers() {
         // Randomize player's markers
@@ -175,6 +186,9 @@ const gameController = (function() {
         // next turn
         if (!gameBoard.checkForWin() && !gameBoard.checkForTie()) {
             displayController.displayPlayerTurn(player, turnNumber);
+            if (player.getIsComputer()) {
+                displayController.playComputerTurn(player);
+            }
         }
         else { // game over
             turnNumber--;
@@ -201,7 +215,24 @@ const gameController = (function() {
         }
     }
 
-    return {playGame, getWhoseTurn, nextTurn, assignPlayer};
+    function generateRandomOpponent() {
+        const namesArray = ["Sven", "Eden", "Ludwig", "Max", "Lena", "Hector", "Helga", "Bjørn"];
+        let nameIndex = Math.floor(Math.random() * namesArray.length);
+        const opponent = createPlayer(namesArray[nameIndex]);
+        gameController.assignPlayer(opponent, 2);
+        return opponent;
+    }
+
+    // mode string param can be either "solo" or "multiplayer"
+    function setGameMode(mode) {
+        gameMode = mode;
+    }
+
+    function getGameMode() {
+        return gameMode;
+    }
+
+    return {playGame, getWhoseTurn, nextTurn, assignPlayer, setGameMode, generateRandomOpponent, getGameMode};
 })();
 
 
@@ -211,6 +242,7 @@ const displayController = (function() {
     const header1 = document.querySelector(".header1");
     const header2 = document.querySelector(".header2");
     const header3 = document.querySelector(".header3");
+
 
     function clearDisplay() {
         const elements = display.childNodes;
@@ -264,6 +296,9 @@ const displayController = (function() {
             header1.textContent = `${player.getName()}`;
             header1.style.color = getMarkerColor(player.getMarker());
             header2.textContent = ", your turn! ";
+            if (player.isComputer) {
+                header2.textContent = "'s turn!";
+            }
             header3.textContent = ` (${player.getMarker()}'s)`;
             header3.style.color = getMarkerColor(player.getMarker());
         }
@@ -377,19 +412,101 @@ const displayController = (function() {
         const player = createPlayer(playerName);
         gameController.assignPlayer(player, playerNumber);
         if (playerNumber == 1) {
-            getPlayerInfo(2);
+            if (gameController.getGameMode() == "multiplayer") {
+                getPlayerInfo(2);
+            }
+            else { // solo mode
+                let opponent = gameController.generateRandomOpponent();
+                opponent.setIsComputer(true);
+
+                // show match up
+                displayController.clearDisplay();
+                const matchupDisplay = document.createElement("div");
+                matchupDisplay.id = "matchup-display";
+                const matchupName1 =  document.createElement("h1");
+                const matchupVs = document.createElement("h1");
+                const matchupName2 =  document.createElement("h1");
+                matchupDisplay.appendChild(matchupName1);
+                matchupDisplay.appendChild(matchupVs);
+                matchupDisplay.appendChild(matchupName2);
+                display.appendChild(matchupDisplay);
+                matchupName1.textContent = `${player.getName()}`;
+                matchupName1.style.color = getMarkerColor("X");
+                matchupVs.textContent = " vs. ";
+                matchupVs.style.color = "rgb(48, 48, 48)";
+                matchupName2.textContent = `${opponent.getName()}!`;
+                matchupName2.style.color = getMarkerColor("O");
+
+                setTimeout(() => {
+                    gameController.playGame()
+                }, 2250);
+            }
         }
         else {
             gameController.playGame();
         }
     }
 
-    return {clearDisplay, generateFreshBoard, placeMark, displayPlayerTurn, displayResult, getPlayerInfo};
+    function playComputerTurn(computerPlayer) {
+        // temporarily disable box clicks
+        const boxes = document.querySelectorAll(".box");
+        for (let i = 0; i < boxes.length; i++) {
+            if (boxes[i].textContent == "") {
+                boxes[i].removeEventListener("click", handleBoxSelection);
+                boxes[i].classList.remove("available-box");
+            }
+        }
+
+        let selectedBoxIndex;
+        do {
+            selectedBoxIndex = Math.floor(Math.random() * 9);
+        } while (!gameBoard.insertMark(computerPlayer.getMarker(), selectedBoxIndex));
+
+
+        setTimeout(() => {
+            placeMark(computerPlayer.getMarker(), selectedBoxIndex);
+            // re-add event listeners for available boxes
+            for (let i = 0; i < boxes.length; i++) {
+                if (boxes[i].textContent == "") {
+                    boxes[i].addEventListener("click", handleBoxSelection);
+                    boxes[i].classList.add("available-box");
+                }
+            }
+            gameController.nextTurn();
+        }, 2000);
+    }
+
+    function displayGameModes() {
+        clearDisplay();
+        const gameModesDisplay = document.createElement("div");
+        gameModesDisplay.id = "game-modes-display";
+        const soloButton = document.createElement("button");
+        soloButton.textContent = "Single player";
+        const multiplayerButton = document.createElement("button");
+        multiplayerButton.textContent = "2 players";
+        gameModesDisplay.appendChild(soloButton);
+        gameModesDisplay.appendChild(multiplayerButton);
+        display.appendChild(gameModesDisplay);
+
+        soloButton.addEventListener("click", () => {
+            gameController.setGameMode("solo");
+            displayController.getPlayerInfo(1);
+        })
+
+        multiplayerButton.addEventListener("click", () => {
+            gameController.setGameMode("multiplayer");
+            displayController.getPlayerInfo(1);
+        })
+    }
+
+    return {clearDisplay, generateFreshBoard, placeMark, displayPlayerTurn, displayResult, getPlayerInfo, playComputerTurn, displayGameModes};
 })();
 
 
 const playGameButton = document.querySelector(".play-game-button");
 playGameButton.addEventListener("click", () => {
-    displayController.getPlayerInfo(1);
+    displayController.displayGameModes();
+    // displayController.getPlayerInfo(1);
+    // gameController.setGameMode("solo");
 })
 
