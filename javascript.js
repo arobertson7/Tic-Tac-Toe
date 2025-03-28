@@ -344,6 +344,7 @@ const displayController = (function() {
         message.textContent = `Player ${playerNumber}, enter your name: `;
         const input = document.createElement("input");
         input.id = "playerNameInputField";
+        input["maxLength"] = "8";
         const submitButton = document.createElement("button");
         submitButton.textContent = "Go ->";
         playerInfoForm.appendChild(message);
