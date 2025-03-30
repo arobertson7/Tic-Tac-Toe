@@ -106,6 +106,108 @@ const gameBoard = (function() {
         }
     }
 
+    // returns the index which should be played or -1 if no winning (or blocking) choice was found
+    function getComputerChoice(computerMark) {
+        let pathIndices = [];
+        let computerCount = 0;
+        let playerCount = 0;
+
+        //search rows
+        for (let i = 0; i < 9; i++) {
+            if (i % 3 == 0) {
+                computerCount = 0;
+                playerCount = 0;
+                pathIndices = [];
+            }
+
+            if (board[i] == computerMark) {
+                computerCount++;
+            }
+            else if (board[i] != "") {
+   
+                playerCount++;
+            }
+            pathIndices.push(i);
+
+            if (computerCount == 2 && playerCount == 0 && (i == 2 || i == 5 || i == 8)) {
+                for (let j = 0; j < pathIndices.length; j++) {
+                    if (board[pathIndices[j]] == "") {
+                        return pathIndices[j];
+                    }
+                }
+            }
+        }
+
+        //search columns
+        for (let i = 0; i < 3; i++) {
+            computerCount = 0;
+            playerCount = 0;
+            pathIndices = [];
+
+            for (let j = i; j < 9; j += 3) { // 0,3,6    1,4,7     2,5,8   are winning col combos
+                if (board[j] == computerMark) {
+                    computerCount++;
+                }
+                else if (board[j] != "") {
+                    playerCount++;
+                }
+                pathIndices.push(j);
+            }
+
+            if (computerCount == 2 && playerCount == 0) {
+                for (let j = 0; j < pathIndices.length; j++) {
+                    if (board[pathIndices[j]] == "") {
+                        return pathIndices[j];
+                    }
+                }
+            }
+        }
+
+        // search diagonals
+        // (0,4,8)
+        computerCount = 0;
+        playerCount = 0;
+        pathIndices = [];
+        for (let i = 0; i < 9; i += 4) {
+            if (board[i] == computerMark) {
+                computerCount++;
+            }
+            else if (!board[i] == "") {
+                playerCount++;
+            }
+            pathIndices.push(i);
+        }
+        if (computerCount == 2 && playerCount == 0) {
+            for (let j = 0; j < pathIndices.length; j++) {
+                if (board[pathIndices[j]] == "") {
+                    return pathIndices[j];
+                }
+            }
+        }
+
+        computerCount = 0;
+        playerCount = 0;
+        pathIndices = [];
+        // (2,4,6)
+        for (let i = 2; i < 7; i += 2) {
+            if (board[i] == computerMark) {
+                computerCount++;
+            }
+            else if (!board[i] == "") {
+                playerCount++;
+            }
+            pathIndices.push(i);
+        }
+        if (computerCount == 2 && playerCount == 0) {
+            for (let j = 0; j < pathIndices.length; j++) {
+                if (board[pathIndices[j]] == "") {
+                    return pathIndices[j];
+                }
+            }
+        }
+        return -1;
+    }
+
     function checkForWin() {
         return containsWin;
     }
@@ -114,7 +216,7 @@ const gameBoard = (function() {
         return containsTie;
     }
 
-    return {insertMark, clearBoard, checkForWin, checkForTie};
+    return {insertMark, clearBoard, checkForWin, checkForTie, getComputerChoice};
 })();
 
 
@@ -462,11 +564,23 @@ const displayController = (function() {
             }
         }
 
-        let selectedBoxIndex;
-        do {
+        // look for winning choice
+        let selectedBoxIndex = gameBoard.getComputerChoice(computerPlayer.getMarker());
+        // if none, look for blocking choice
+        if (selectedBoxIndex == -1) {
+            let playerMark;
+            if (computerPlayer.getMarker() == "X") {
+                playerMark = "O";
+            }
+            else {
+                playerMark = "X";
+            }
+            selectedBoxIndex = gameBoard.getComputerChoice(playerMark);
+        }
+        // if no choice was found above, the below will randomize the choice; else it will just go ahead and insert the choice found above
+        while (!gameBoard.insertMark(computerPlayer.getMarker(), selectedBoxIndex)) {
             selectedBoxIndex = Math.floor(Math.random() * 9);
-        } while (!gameBoard.insertMark(computerPlayer.getMarker(), selectedBoxIndex));
-
+        }
 
         setTimeout(() => {
             placeMark(computerPlayer.getMarker(), selectedBoxIndex);
